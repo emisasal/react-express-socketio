@@ -1,10 +1,17 @@
 import express from "express"
 import http from "http"
-import { Server as SocketServer } from "socket.io"
+import { Server } from "socket.io"
+
+const PORT = 4000
 
 const app = express()
 const server = http.createServer(app)
-const io = new SocketServer(server, {
+const io = new Server(server, {
+  connectionStateRecovery: {
+    maxDisconnectionDuration: 2 * 60 * 1000,
+    checkInterval: 1000,
+    maxRetries: 5,
+  },
   cors: { origin: "http://localhost:5173" },
 })
 
@@ -17,7 +24,12 @@ io.on("connection", (socket) => {
       from: socket.id,
     }) // Broadcast the message to all connected clients
   })
+
+  socket.on("disconnect", () => {
+    console.log("A user disconnected") // Log when a user disconnects
+  })
 })
 
-server.listen(4000)
-console.log("Server is running on port 4000")
+server.listen(PORT, () => {
+  console.log(`Server is running on port: ${PORT}`)
+})
