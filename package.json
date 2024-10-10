@@ -1,0 +1,20 @@
+{
+  "name": "react-express-socketio",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --watch-preserve-output server/index.js",
+    "build": "npm run --prefix frontend build",
+    "start": "node server/index.js"
+  },
+  "keywords": [],
+  "author": "Emiliano Sasal",
+  "license": "ISC",
+  "description": "Chat app using React, Express, and Socket.io",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "socket.io": "^4.8.0"
+  }
+}
