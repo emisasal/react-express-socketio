@@ -35,7 +35,7 @@ Key files:
 ### Prerequisites
 
 - Node.js (v14 or later recommended)
-- npm (comes with Node.js)
+- [pnpm](https://pnpm.io/installation)
 
 ### Installation
 
@@ -47,23 +47,19 @@ Key files:
 
 2. Install dependencies:
    ```
-   npm install
-   cd frontend
-   npm install
-   cd ..
+   pnpm install
    ```
 
 ### Running the Application
 
 1. Start the backend server:
    ```
-   npm run dev
+   pnpm dev
    ```
 
 2. In a new terminal, start the frontend development server:
    ```
-   cd frontend
-   npm run dev
+   pnpm --filter frontend dev
    ```
 
 3. Open your browser and navigate to `http://localhost:5173` to use the chat application.
@@ -83,12 +79,12 @@ Key files:
 
 1. Build the frontend:
    ```
-   npm run build
+   pnpm build
    ```
 
 2. Start the production server:
    ```
-   npm start
+   pnpm start
    ```
 
 ## License

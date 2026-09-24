@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
+  "packageManager": "pnpm@12.6.0",
   "scripts": {
     "dev": "node --watch --watch-preserve-output server/index.js",
-    "build": "npm run --prefix frontend build",
+    "build": "pnpm --filter frontend run build",
     "start": "node server/index.js"
   },
   "keywords": [],
