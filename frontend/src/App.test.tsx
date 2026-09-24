@@ -1,15 +1,8 @@
 import { act, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { ChatMessage as ServerMessage } from "../../shared/events.ts"
 import App from "./App.tsx"
-
-type IncomingMessage = {
-  id: string
-  body: string
-  from: string
-  name?: string
-  sentAt: number
-}
 
 const { socket, resetSocket, receiveMessage, receiveHistory } = vi.hoisted(() => {
   const handlers = new Map<string, Set<(...args: unknown[]) => void>>()
@@ -35,10 +28,10 @@ const { socket, resetSocket, receiveMessage, receiveHistory } = vi.hoisted(() =>
       handlers.clear()
       socket.emit.mockClear()
     },
-    receiveMessage(message: IncomingMessage) {
+    receiveMessage(message: ServerMessage) {
       handlers.get("message")?.forEach((handler) => handler(message))
     },
-    receiveHistory(messages: IncomingMessage[]) {
+    receiveHistory(messages: ServerMessage[]) {
       handlers.get("history")?.forEach((handler) => handler(messages))
     },
   }

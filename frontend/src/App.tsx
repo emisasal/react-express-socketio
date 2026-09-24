@@ -7,25 +7,11 @@ import {
   type FormEvent,
 } from "react"
 import { io, type Socket } from "socket.io-client"
-
-type IncomingMessage = {
-  id: string
-  body: string
-  from: string
-  name?: string
-  sentAt: number
-}
-
-type ClientToServerEvents = {
-  message: (payload: { body: string }) => void
-  name: (value: string) => void
-  history: () => void
-}
-
-type ServerToClientEvents = {
-  message: (message: IncomingMessage) => void
-  history: (messages: IncomingMessage[]) => void
-}
+import type {
+  ChatMessage as ServerMessage,
+  ClientToServerEvents,
+  ServerToClientEvents,
+} from "../../shared/events.ts"
 
 type ChatMessage = {
   id: string
@@ -36,9 +22,10 @@ type ChatMessage = {
   at: Date
 }
 
-const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
-  "http://localhost:4000",
-)
+const socketUrl = import.meta.env.VITE_SOCKET_URL?.trim()
+const socket: Socket<ServerToClientEvents, ClientToServerEvents> = socketUrl
+  ? io(socketUrl)
+  : io()
 const NAME_LIMIT = 24
 const NAME_STORAGE_KEY = "chat-name"
 const USER_COLORS = [
@@ -82,7 +69,7 @@ const formatTime = (date: Date) =>
 
 const shortId = (id: string) => id.slice(-4)
 
-const toMessage = (incoming: IncomingMessage): ChatMessage => ({
+const toMessage = (incoming: ServerMessage): ChatMessage => ({
   id: incoming.id,
   body: incoming.body,
   from: incoming.from,
@@ -113,14 +100,14 @@ const App = () => {
       socket.emit("history")
     }
     const onDisconnect = () => setConnected(false)
-    const onHistory = (incoming: IncomingMessage[]) => {
+    const onHistory = (incoming: ServerMessage[]) => {
       setMessages((current) => {
         const byId = new Map(current.map((item) => [item.id, item]))
         for (const item of incoming) byId.set(item.id, toMessage(item))
         return [...byId.values()].sort((a, b) => a.at.getTime() - b.at.getTime())
       })
     }
-    const onMessage = (incoming: IncomingMessage) => {
+    const onMessage = (incoming: ServerMessage) => {
       setMessages((current) => {
         if (current.some((item) => item.id === incoming.id)) return current
         return [...current, toMessage(incoming)]

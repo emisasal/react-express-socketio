@@ -24,9 +24,10 @@ The backend is built with Express and Socket.io. It stores a display name for ea
 
 Key files:
 
-- `server/index.ts`: Starts the server on port 4000.
+- `server/index.ts`: Starts the server. It reads `PORT` (default 4000) and `CORS_ORIGINS`, and serves `frontend/dist`.
 - `server/chat.ts`: Express and Socket.io setup, including names, broadcasting, and logs.
 - `server/chat.test.ts`: Server tests.
+- `shared/events.ts`: Socket.io event types used by the server and the frontend.
 
 ### Frontend
 
@@ -72,7 +73,7 @@ Key files:
 
 3. Open `http://localhost:5173` in your browser.
 
-The frontend also accepts `http://127.0.0.1:5173`.
+Vite proxies Socket.io to the backend, so the page and the socket share one origin. The frontend also accepts `http://127.0.0.1:5173`. Set `PORT` for both commands when the backend should listen somewhere other than 4000.
 
 ## Usage
 
@@ -113,7 +114,9 @@ Server tests use Vitest and a real Socket.io server. Frontend tests use Vitest, 
    pnpm start
    ```
 
-The production server still listens on port 4000 and expects the frontend to be served separately.
+3. Open `http://localhost:4000`.
+
+The production server serves the built frontend and the socket on the same origin. Set `VITE_SOCKET_URL` at build time when the socket server lives on another origin, and set `CORS_ORIGINS` to a comma-separated list of page origins that may connect.
 
 ## License
 

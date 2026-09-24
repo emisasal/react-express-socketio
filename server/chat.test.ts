@@ -1,12 +1,16 @@
+import { mkdtemp, writeFile } from "node:fs/promises"
 import type { AddressInfo } from "node:net"
+import { tmpdir } from "node:os"
+import path from "node:path"
 import { io, type Socket } from "socket.io-client"
 import { afterEach, describe, expect, it } from "vitest"
-import { createChatServer, type ChatMessage } from "./chat.ts"
+import type { ChatMessage } from "../shared/events.ts"
+import { createChatServer, type ChatServerOptions } from "./chat.ts"
 
 const openServers: Array<{ close: () => Promise<void> }> = []
 
-const startServer = async () => {
-  const { server, io: chat } = createChatServer()
+const startServer = async (options?: ChatServerOptions) => {
+  const { server, io: chat } = createChatServer(options)
   await new Promise<void>((resolve) => {
     server.listen(0, "127.0.0.1", () => resolve())
   })
@@ -172,5 +176,27 @@ describe("chat server", () => {
     ada.close()
     grace.close()
     bea.close()
+  })
+
+  it("serves the frontend build", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "chat-"))
+    await writeFile(path.join(dir, "index.html"), "<title>Chat</title>")
+    const running = await startServer({ staticDir: dir })
+
+    const response = await fetch(`http://127.0.0.1:${running.port}/`)
+
+    expect(response.status).toBe(200)
+    await expect(response.text()).resolves.toContain("<title>Chat</title>")
+  })
+
+  it("allows a browser origin from the server options", async () => {
+    const running = await startServer({ corsOrigins: ["http://example.test"] })
+
+    const response = await fetch(
+      `http://127.0.0.1:${running.port}/socket.io/?EIO=4&transport=polling`,
+      { headers: { Origin: "http://example.test" } },
+    )
+
+    expect(response.headers.get("access-control-allow-origin")).toBe("http://example.test")
   })
 })

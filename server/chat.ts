@@ -1,28 +1,19 @@
 import express from "express"
 import http from "http"
 import { Server, type Socket } from "socket.io"
+import type {
+  ChatMessage,
+  ClientToServerEvents,
+  ServerToClientEvents,
+} from "../shared/events.ts"
 
 const NAME_LIMIT = 24
 const BODY_LIMIT = 500
 const HISTORY_LIMIT = 50
 
-export type ChatMessage = {
-  id: string
-  body: string
-  from: string
-  name?: string
-  sentAt: number
-}
-
-type ClientToServerEvents = {
-  message: (payload: { body?: unknown }) => void
-  name: (value: unknown) => void
-  history: () => void
-}
-
-type ServerToClientEvents = {
-  message: (message: ChatMessage) => void
-  history: (messages: ChatMessage[]) => void
+export type ChatServerOptions = {
+  staticDir?: string
+  corsOrigins?: string[]
 }
 
 type SocketData = {
@@ -63,8 +54,12 @@ const cleanBody = (value: unknown) => {
   return value.trim().slice(0, BODY_LIMIT)
 }
 
-export const createChatServer = () => {
+export const createChatServer = ({
+  staticDir,
+  corsOrigins = [],
+}: ChatServerOptions = {}) => {
   const app = express()
+  if (staticDir) app.use(express.static(staticDir))
   const server = http.createServer(app)
   const io = new Server<
     ClientToServerEvents,
@@ -75,9 +70,7 @@ export const createChatServer = () => {
     connectionStateRecovery: {
       maxDisconnectionDuration: 2 * 60 * 1000,
     },
-    cors: {
-      origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
-    },
+    ...(corsOrigins.length > 0 ? { cors: { origin: corsOrigins } } : {}),
   })
 
   const clientCount = (excluding?: string) => {
