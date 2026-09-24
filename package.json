@@ -8,6 +8,7 @@
     "dev": "node --watch --watch-preserve-output server/index.ts",
     "build": "pnpm --filter frontend run build",
     "start": "node server/index.ts",
+    "test": "vitest run && pnpm --filter frontend test",
     "typecheck": "tsc --noEmit && pnpm --filter frontend run typecheck"
   },
   "keywords": [],
@@ -23,6 +24,8 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.2",
     "prettier": "^3.9.9",
-    "typescript": "^5.9.3"
+    "socket.io-client": "^4.8.3",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.1"
   }
 }
