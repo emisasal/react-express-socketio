@@ -104,7 +104,9 @@ const App = () => {
       setMessages((current) => {
         const byId = new Map(current.map((item) => [item.id, item]))
         for (const item of incoming) byId.set(item.id, toMessage(item))
-        return [...byId.values()].sort((a, b) => a.at.getTime() - b.at.getTime())
+        return [...byId.values()].sort(
+          (a, b) => a.at.getTime() - b.at.getTime(),
+        )
       })
     }
     const onMessage = (incoming: ServerMessage) => {
@@ -237,50 +239,51 @@ const App = () => {
         </p>
       </header>
 
-      <div
-        className="min-h-0 flex-1 overflow-y-auto p-5"
-        ref={listRef}
-        aria-label="Messages"
-      >
+      <div className="min-h-0 flex-1 overflow-y-auto p-5" ref={listRef}>
         {messages.length === 0 ? (
           <p className="grid h-full place-items-center text-center text-muted">
             No messages yet. Say hello.
           </p>
-        ) : (
-          <ol className="m-0 flex list-none flex-col gap-3.5 p-0">
-            {messages.map((item) => {
-              const author = item.mine
-                ? item.name || "You"
-                : item.name || `Guest ${shortId(item.from)}`
+        ) : null}
+        <ol
+          className="m-0 flex list-none flex-col gap-3.5 p-0"
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions"
+          aria-label="Messages"
+        >
+          {messages.map((item) => {
+            const author = item.mine
+              ? item.name || "You"
+              : item.name || `Guest ${shortId(item.from)}`
 
-              return (
-                <li
-                  key={item.id}
-                  className={`flex max-w-[85%] flex-col ${item.mine ? "items-end self-end" : "items-start"}`}
+            return (
+              <li
+                key={item.id}
+                className={`flex max-w-[85%] flex-col ${item.mine ? "items-end self-end" : "items-start"}`}
+              >
+                <p className="mb-1 flex items-center gap-2 px-0.5 text-xs text-muted">
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: colorFor(item.from) }}
+                      aria-hidden="true"
+                    />
+                    {author}
+                  </span>
+                  <time dateTime={item.at.toISOString()}>
+                    {formatTime(item.at)}
+                  </time>
+                </p>
+                <p
+                  className={`m-0 px-3.5 py-2.5 leading-snug wrap-anywhere whitespace-pre-wrap ${item.mine ? "rounded-2xl rounded-br-md bg-mine text-mine-ink" : "rounded-2xl rounded-bl-md bg-other"}`}
                 >
-                  <p className="mb-1 flex items-center gap-2 px-0.5 text-xs text-muted">
-                    <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
-                      <span
-                        className="size-2.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: colorFor(item.from) }}
-                        aria-hidden="true"
-                      />
-                      {author}
-                    </span>
-                    <time dateTime={item.at.toISOString()}>
-                      {formatTime(item.at)}
-                    </time>
-                  </p>
-                  <p
-                    className={`m-0 px-3.5 py-2.5 leading-snug wrap-anywhere whitespace-pre-wrap ${item.mine ? "rounded-2xl rounded-br-md bg-mine text-mine-ink" : "rounded-2xl rounded-bl-md bg-other"}`}
-                  >
-                    {item.body}
-                  </p>
-                </li>
-              )
-            })}
-          </ol>
-        )}
+                  {item.body}
+                </p>
+              </li>
+            )
+          })}
+        </ol>
       </div>
 
       <form

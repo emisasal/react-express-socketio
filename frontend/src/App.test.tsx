@@ -4,38 +4,40 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { ChatMessage as ServerMessage } from "../../shared/events.ts"
 import App from "./App.tsx"
 
-const { socket, resetSocket, receiveMessage, receiveHistory } = vi.hoisted(() => {
-  const handlers = new Map<string, Set<(...args: unknown[]) => void>>()
-  const socket = {
-    connected: true,
-    id: "abcdefghijklmnop",
-    on(event: string, handler: (...args: unknown[]) => void) {
-      const current = handlers.get(event) ?? new Set()
-      current.add(handler)
-      handlers.set(event, current)
-      return socket
-    },
-    off(event: string, handler: (...args: unknown[]) => void) {
-      handlers.get(event)?.delete(handler)
-      return socket
-    },
-    emit: vi.fn(),
-  }
+const { socket, resetSocket, receiveMessage, receiveHistory } = vi.hoisted(
+  () => {
+    const handlers = new Map<string, Set<(...args: unknown[]) => void>>()
+    const socket = {
+      connected: true,
+      id: "abcdefghijklmnop",
+      on(event: string, handler: (...args: unknown[]) => void) {
+        const current = handlers.get(event) ?? new Set()
+        current.add(handler)
+        handlers.set(event, current)
+        return socket
+      },
+      off(event: string, handler: (...args: unknown[]) => void) {
+        handlers.get(event)?.delete(handler)
+        return socket
+      },
+      emit: vi.fn(),
+    }
 
-  return {
-    socket,
-    resetSocket() {
-      handlers.clear()
-      socket.emit.mockClear()
-    },
-    receiveMessage(message: ServerMessage) {
-      handlers.get("message")?.forEach((handler) => handler(message))
-    },
-    receiveHistory(messages: ServerMessage[]) {
-      handlers.get("history")?.forEach((handler) => handler(messages))
-    },
-  }
-})
+    return {
+      socket,
+      resetSocket() {
+        handlers.clear()
+        socket.emit.mockClear()
+      },
+      receiveMessage(message: ServerMessage) {
+        handlers.get("message")?.forEach((handler) => handler(message))
+      },
+      receiveHistory(messages: ServerMessage[]) {
+        handlers.get("history")?.forEach((handler) => handler(messages))
+      },
+    }
+  },
+)
 
 vi.mock("socket.io-client", () => ({
   io: () => socket,
@@ -51,8 +53,14 @@ describe("chat app", () => {
     render(<App />)
 
     expect(await screen.findByRole("status")).toHaveTextContent("Connected")
-    expect(screen.getByRole("textbox", { name: "Your name" })).toBeInTheDocument()
+    expect(
+      screen.getByRole("textbox", { name: "Your name" }),
+    ).toBeInTheDocument()
     expect(screen.getByText("No messages yet. Say hello.")).toBeInTheDocument()
+    expect(screen.getByRole("log", { name: "Messages" })).toHaveAttribute(
+      "aria-live",
+      "polite",
+    )
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled()
   })
 
@@ -64,7 +72,9 @@ describe("chat app", () => {
     await user.click(screen.getByRole("button", { name: "Save" }))
 
     expect(screen.getByText("Ada")).toBeInTheDocument()
-    expect(screen.queryByRole("textbox", { name: "Your name" })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("textbox", { name: "Your name" }),
+    ).not.toBeInTheDocument()
     expect(socket.emit).toHaveBeenCalledWith("name", "Ada")
     expect(screen.getByText("Ada").previousElementSibling).toHaveStyle({
       backgroundColor: expect.any(String),
@@ -93,10 +103,9 @@ describe("chat app", () => {
     })
 
     expect(screen.getByText("Hello")).toBeInTheDocument()
-    expect(screen.getByText("Hello").closest("li")?.querySelector("time")).toHaveAttribute(
-      "dateTime",
-      new Date(sentAt).toISOString(),
-    )
+    expect(
+      screen.getByText("Hello").closest("li")?.querySelector("time"),
+    ).toHaveAttribute("dateTime", new Date(sentAt).toISOString())
   })
 
   it("shows another person's message with a different color", async () => {
@@ -130,7 +139,9 @@ describe("chat app", () => {
     const graceDot = messages.getByText("Grace").querySelector("[aria-hidden]")
     expect(adaDot?.getAttribute("style")).toContain("background-color")
     expect(graceDot?.getAttribute("style")).toContain("background-color")
-    expect(graceDot?.getAttribute("style")).not.toBe(adaDot?.getAttribute("style"))
+    expect(graceDot?.getAttribute("style")).not.toBe(
+      adaDot?.getAttribute("style"),
+    )
   })
 
   it("shows recent messages from the server when joining", async () => {
@@ -151,7 +162,9 @@ describe("chat app", () => {
     })
 
     expect(screen.getByText("Already here")).toBeInTheDocument()
-    expect(screen.queryByText("No messages yet. Say hello.")).not.toBeInTheDocument()
+    expect(
+      screen.queryByText("No messages yet. Say hello."),
+    ).not.toBeInTheDocument()
     expect(socket.emit).toHaveBeenCalledWith("history")
   })
 })

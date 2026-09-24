@@ -49,6 +49,7 @@ Key files:
 ### Installation
 
 1. Clone the repository:
+
    ```
    git clone <repository-url>
    cd react-express-socketio
@@ -62,11 +63,13 @@ Key files:
 ### Running the Application
 
 1. Start the backend server:
+
    ```
    pnpm dev
    ```
 
 2. In a new terminal, start the frontend development server:
+
    ```
    pnpm --filter frontend dev
    ```
@@ -91,6 +94,7 @@ The header shows **Connected** while the Socket.io connection is open.
 - Prettier formats files on save in this workspace. The Prettier extension is recommended in `.vscode/extensions.json`.
 - `pnpm typecheck` checks the server and the frontend.
 - `pnpm --filter frontend lint` runs ESLint on the frontend.
+- GitHub Actions runs `pnpm test` and `pnpm typecheck` on every push and pull request.
 
 ### Tests
 
@@ -105,11 +109,13 @@ Server tests use Vitest and a real Socket.io server. Frontend tests use Vitest, 
 ## Building for Production
 
 1. Typecheck and build the frontend:
+
    ```
    pnpm build
    ```
 
 2. Start the production server:
+
    ```
    pnpm start
    ```
