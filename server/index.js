@@ -3,6 +3,7 @@ import http from "http"
 import { Server } from "socket.io"
 
 const PORT = 4000
+const NAME_LIMIT = 24
 
 const app = express()
 const server = http.createServer(app)
@@ -12,7 +13,9 @@ const io = new Server(server, {
     checkInterval: 1000,
     maxRetries: 5,
   },
-  cors: { origin: "http://localhost:5173" },
+  cors: {
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  },
 })
 
 const log = (event, details = {}) => {
@@ -33,6 +36,15 @@ const preview = (body) => {
   return JSON.stringify(clipped)
 }
 
+const cleanName = (value) => {
+  if (typeof value !== "string") return ""
+  return value
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, NAME_LIMIT)
+}
+
 const clientCount = (excluding) => {
   const count = io.sockets.sockets.size
   if (excluding && io.sockets.sockets.has(excluding)) return count - 1
@@ -44,22 +56,41 @@ io.engine.on("connection_error", (error) => {
 })
 
 io.on("connection", (socket) => {
+  socket.data.name = ""
+
   log("connect", {
     id: socket.id,
     clients: clientCount(),
     recovered: socket.recovered ? "yes" : undefined,
   })
 
-  socket.on("message", (body) => {
+  socket.on("name", (value) => {
+    const name = cleanName(value)
+    if (name === socket.data.name) return
+    socket.data.name = name
+    log("name", { id: socket.id, name: name || "(cleared)" })
+  })
+
+  socket.on("message", (payload) => {
+    const body = typeof payload === "string" ? payload : payload?.body
+    if (typeof body !== "string") return
+
+    const name = cleanName(
+      typeof payload === "string" ? socket.data.name : payload?.name,
+    )
+    socket.data.name = name
+
     socket.broadcast.emit("message", {
       body,
       from: socket.id,
+      name: name || undefined,
     })
 
     log("message", {
       id: socket.id,
+      name: name || undefined,
       text: preview(body),
-      chars: typeof body === "string" ? body.length : undefined,
+      chars: body.length,
       recipients: Math.max(clientCount() - 1, 0),
     })
   })
