@@ -17,6 +17,10 @@ const App = () => {
     socket.emit("message", message) // Send the message to the server
   }
 
+  // Preserves the previous state and adds the new message
+  const recieveMessage = (message) =>
+    setMessages((messages) => [...messages, message])
+
   useEffect(() => {
     socket.on("message", recieveMessage) // Listen for messages from the server
 
@@ -24,10 +28,6 @@ const App = () => {
       socket.off("message", recieveMessage) // Clean up the listener when the component unmounts
     }
   }, [])
-
-  // Preserves the previous state and adds the new message
-  const recieveMessage = (message) =>
-    setMessages((messages) => [...messages, message])
 
   return (
     <div>

@@ -34,7 +34,7 @@ Key files:
 
 ### Prerequisites
 
-- Node.js (v14 or later recommended)
+- Node.js (v20.19 or later)
 - [pnpm](https://pnpm.io/installation)
 
 ### Installation

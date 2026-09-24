@@ -14,8 +14,11 @@
   "license": "ISC",
   "description": "Chat app using React, Express, and Socket.io",
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.21.1",
-    "socket.io": "^4.8.0"
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
   }
 }
