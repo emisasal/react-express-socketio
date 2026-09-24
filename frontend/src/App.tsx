@@ -9,18 +9,22 @@ import {
 import { io, type Socket } from "socket.io-client"
 
 type IncomingMessage = {
+  id: string
   body: string
   from: string
   name?: string
+  sentAt: number
 }
 
 type ClientToServerEvents = {
-  message: (payload: { body: string; name: string }) => void
+  message: (payload: { body: string }) => void
   name: (value: string) => void
+  history: () => void
 }
 
 type ServerToClientEvents = {
   message: (message: IncomingMessage) => void
+  history: (messages: IncomingMessage[]) => void
 }
 
 type ChatMessage = {
@@ -78,6 +82,15 @@ const formatTime = (date: Date) =>
 
 const shortId = (id: string) => id.slice(-4)
 
+const toMessage = (incoming: IncomingMessage): ChatMessage => ({
+  id: incoming.id,
+  body: incoming.body,
+  from: incoming.from,
+  name: incoming.name || "",
+  mine: incoming.from === socket.id,
+  at: new Date(incoming.sentAt),
+})
+
 const App = () => {
   const storedName = readStoredName()
   const [savedName, setSavedName] = useState(storedName)
@@ -97,34 +110,38 @@ const App = () => {
     const onConnect = () => {
       setConnected(true)
       setUserId(socket.id ?? "")
+      socket.emit("history")
     }
     const onDisconnect = () => setConnected(false)
+    const onHistory = (incoming: IncomingMessage[]) => {
+      setMessages((current) => {
+        const byId = new Map(current.map((item) => [item.id, item]))
+        for (const item of incoming) byId.set(item.id, toMessage(item))
+        return [...byId.values()].sort((a, b) => a.at.getTime() - b.at.getTime())
+      })
+    }
     const onMessage = (incoming: IncomingMessage) => {
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          body: incoming.body,
-          from: incoming.from,
-          name: incoming.name || "",
-          mine: false,
-          at: new Date(),
-        },
-      ])
+      setMessages((current) => {
+        if (current.some((item) => item.id === incoming.id)) return current
+        return [...current, toMessage(incoming)]
+      })
     }
 
     socket.on("connect", onConnect)
     socket.on("disconnect", onDisconnect)
+    socket.on("history", onHistory)
     socket.on("message", onMessage)
     queueMicrotask(() => {
       if (!socket.connected) return
       setConnected(true)
       setUserId(socket.id ?? "")
+      socket.emit("history")
     })
 
     return () => {
       socket.off("connect", onConnect)
       socket.off("disconnect", onDisconnect)
+      socket.off("history", onHistory)
       socket.off("message", onMessage)
     }
   }, [])
@@ -162,21 +179,9 @@ const App = () => {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const senderId = socket.id
-    if (!trimmed || !connected || !senderId) return
+    if (!trimmed || !connected || !socket.id) return
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        body: trimmed,
-        from: senderId,
-        name: savedName,
-        mine: true,
-        at: new Date(),
-      },
-    ])
-    socket.emit("message", { body: trimmed, name: savedName })
+    socket.emit("message", { body: trimmed })
     setMessage("")
   }
 

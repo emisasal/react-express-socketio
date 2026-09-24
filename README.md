@@ -1,6 +1,6 @@
 # React Express Socket.io Chat Application
 
-This project is a real-time chat application built with React, Express, and Socket.io. A TypeScript React frontend talks to a TypeScript Express server, and Socket.io broadcasts each message to everyone else who is connected.
+This project is a real-time chat application built with React, Express, and Socket.io. A TypeScript React frontend talks to a TypeScript Express server, and Socket.io delivers each message to everyone who is connected.
 
 ## Features
 
@@ -8,7 +8,8 @@ This project is a real-time chat application built with React, Express, and Sock
 - A display name for each tab, saved for that tab's session
 - A stable color next to each person's name
 - Connection status in the header
-- Server-side message broadcasting, with names trimmed and limited to 24 characters
+- Server-side message broadcasting. The server keeps the display name, trims it to 24 characters, trims each message, and limits messages to 500 characters
+- A short in-memory history, so a new tab sees recent messages with the server's timestamp
 
 ## Project Structure
 
@@ -19,7 +20,7 @@ The repository is a pnpm workspace with two packages:
 
 ### Backend
 
-The backend is built with Express and Socket.io. It accepts a display name and a message, then broadcasts that message to every other connected client.
+The backend is built with Express and Socket.io. It stores a display name for each connection, keeps the latest 50 messages in memory, and broadcasts each new message with the server's timestamp.
 
 Key files:
 
@@ -76,7 +77,7 @@ The frontend also accepts `http://127.0.0.1:5173`.
 ## Usage
 
 1. Enter a name and click **Save**. The name is shown as text, and **Edit** brings the field back. Each browser tab keeps its own name.
-2. Open the application in another tab or window and save a different name there.
+2. Open the application in another tab or window and save a different name there. That tab also shows the recent messages.
 3. Type a message and click **Send** or press Enter.
 4. Your message appears on the right. Messages from other people appear on the left, each with that person's color.
 

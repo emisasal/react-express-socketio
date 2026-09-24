@@ -4,12 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import App from "./App.tsx"
 
 type IncomingMessage = {
+  id: string
   body: string
   from: string
   name?: string
+  sentAt: number
 }
 
-const { socket, resetSocket, receiveMessage } = vi.hoisted(() => {
+const { socket, resetSocket, receiveMessage, receiveHistory } = vi.hoisted(() => {
   const handlers = new Map<string, Set<(...args: unknown[]) => void>>()
   const socket = {
     connected: true,
@@ -35,6 +37,9 @@ const { socket, resetSocket, receiveMessage } = vi.hoisted(() => {
     },
     receiveMessage(message: IncomingMessage) {
       handlers.get("message")?.forEach((handler) => handler(message))
+    },
+    receiveHistory(messages: IncomingMessage[]) {
+      handlers.get("history")?.forEach((handler) => handler(messages))
     },
   }
 })
@@ -82,11 +87,23 @@ describe("chat app", () => {
     await user.type(screen.getByRole("textbox", { name: "Message" }), "Hello")
     await user.click(screen.getByRole("button", { name: "Send" }))
 
-    expect(screen.getByText("Hello")).toBeInTheDocument()
-    expect(socket.emit).toHaveBeenCalledWith("message", {
-      body: "Hello",
-      name: "Ada",
+    expect(socket.emit).toHaveBeenCalledWith("message", { body: "Hello" })
+    const sentAt = Date.parse("2026-09-24T12:00:00.000Z")
+    act(() => {
+      receiveMessage({
+        id: "own-message",
+        body: "Hello",
+        from: "abcdefghijklmnop",
+        name: "Ada",
+        sentAt,
+      })
     })
+
+    expect(screen.getByText("Hello")).toBeInTheDocument()
+    expect(screen.getByText("Hello").closest("li")?.querySelector("time")).toHaveAttribute(
+      "dateTime",
+      new Date(sentAt).toISOString(),
+    )
   })
 
   it("shows another person's message with a different color", async () => {
@@ -99,9 +116,18 @@ describe("chat app", () => {
     await user.click(screen.getByRole("button", { name: "Send" }))
     act(() => {
       receiveMessage({
+        id: "own-message",
+        body: "Hello",
+        from: "abcdefghijklmnop",
+        name: "Ada",
+        sentAt: Date.parse("2026-09-24T12:00:00.000Z"),
+      })
+      receiveMessage({
+        id: "grace-message",
         body: "Hi Ada",
         from: "zzzzzzzzzzzzzzzz",
         name: "Grace",
+        sentAt: Date.parse("2026-09-24T12:00:01.000Z"),
       })
     })
 
@@ -112,5 +138,27 @@ describe("chat app", () => {
     expect(adaDot?.getAttribute("style")).toContain("background-color")
     expect(graceDot?.getAttribute("style")).toContain("background-color")
     expect(graceDot?.getAttribute("style")).not.toBe(adaDot?.getAttribute("style"))
+  })
+
+  it("shows recent messages from the server when joining", async () => {
+    render(<App />)
+    await screen.findByRole("status")
+    const sentAt = Date.parse("2026-09-24T12:04:00.000Z")
+
+    act(() => {
+      receiveHistory([
+        {
+          id: "earlier",
+          body: "Already here",
+          from: "zzzzzzzzzzzzzzzz",
+          name: "Grace",
+          sentAt,
+        },
+      ])
+    })
+
+    expect(screen.getByText("Already here")).toBeInTheDocument()
+    expect(screen.queryByText("No messages yet. Say hello.")).not.toBeInTheDocument()
+    expect(socket.emit).toHaveBeenCalledWith("history")
   })
 })

@@ -3,20 +3,26 @@ import http from "http"
 import { Server, type Socket } from "socket.io"
 
 const NAME_LIMIT = 24
+const BODY_LIMIT = 500
+const HISTORY_LIMIT = 50
 
-type ChatMessage = {
+export type ChatMessage = {
+  id: string
   body: string
   from: string
   name?: string
+  sentAt: number
 }
 
 type ClientToServerEvents = {
-  message: (payload: string | { body?: unknown; name?: unknown }) => void
+  message: (payload: { body?: unknown }) => void
   name: (value: unknown) => void
+  history: () => void
 }
 
 type ServerToClientEvents = {
   message: (message: ChatMessage) => void
+  history: (messages: ChatMessage[]) => void
 }
 
 type SocketData = {
@@ -52,6 +58,11 @@ const cleanName = (value: unknown) => {
     .slice(0, NAME_LIMIT)
 }
 
+const cleanBody = (value: unknown) => {
+  if (typeof value !== "string") return ""
+  return value.trim().slice(0, BODY_LIMIT)
+}
+
 export const createChatServer = () => {
   const app = express()
   const server = http.createServer(app)
@@ -79,6 +90,8 @@ export const createChatServer = () => {
     log("error", error.message)
   })
 
+  const history: ChatMessage[] = []
+
   io.on("connection", (socket: ChatSocket) => {
     socket.data.name = ""
 
@@ -91,21 +104,26 @@ export const createChatServer = () => {
       socket.data.name = cleanName(value)
     })
 
+    socket.on("history", () => {
+      socket.emit("history", [...history])
+    })
+
     socket.on("message", (payload) => {
-      const body = typeof payload === "string" ? payload : payload?.body
-      if (typeof body !== "string") return
+      const body = cleanBody(payload?.body)
+      if (!body) return
 
-      const name = cleanName(
-        typeof payload === "string" ? socket.data.name : payload?.name,
-      )
-      socket.data.name = name
-
-      socket.broadcast.emit("message", {
+      const name = socket.data.name
+      const message: ChatMessage = {
+        id: crypto.randomUUID(),
         body,
         from: socket.id,
         name: name || undefined,
-      })
+        sentAt: Date.now(),
+      }
+      history.push(message)
+      if (history.length > HISTORY_LIMIT) history.shift()
 
+      io.emit("message", message)
       log("message", `${who(socket)} · ${preview(body)}`)
     })
 

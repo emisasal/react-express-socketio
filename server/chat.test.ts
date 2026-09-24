@@ -1,13 +1,7 @@
 import type { AddressInfo } from "node:net"
 import { io, type Socket } from "socket.io-client"
 import { afterEach, describe, expect, it } from "vitest"
-import { createChatServer } from "./chat.ts"
-
-type ChatMessage = {
-  body: string
-  from: string
-  name?: string
-}
+import { createChatServer, type ChatMessage } from "./chat.ts"
 
 const openServers: Array<{ close: () => Promise<void> }> = []
 
@@ -46,41 +40,60 @@ const nextMessage = (socket: Socket) =>
     socket.once("message", resolve)
   })
 
+const nextHistory = (socket: Socket) =>
+  new Promise<ChatMessage[]>((resolve) => {
+    socket.once("history", resolve)
+  })
+
+const waitFor = (socket: Socket, count: number) =>
+  new Promise<void>((resolve) => {
+    let seen = 0
+    socket.on("message", () => {
+      seen += 1
+      if (seen === count) resolve()
+    })
+  })
+
 afterEach(async () => {
   await Promise.all(openServers.splice(0).map((server) => server.close()))
 })
 
 describe("chat server", () => {
-  it("broadcasts a message to other clients with a cleaned name", async () => {
+  it("broadcasts a trimmed message under the name stored for that socket", async () => {
     const running = await startServer()
     const ada = await connect(running.port)
     const grace = await connect(running.port)
     const received = nextMessage(grace)
+    const sentAt = Date.now()
 
-    ada.emit("message", { body: "Hello there", name: "  Ada \n Lovelace  " })
+    ada.emit("name", "  Ada \n Lovelace  ")
+    ada.emit("message", { body: "  Hello there  ", name: "Grace" })
 
-    await expect(received).resolves.toEqual({
+    const message = await received
+    expect(message).toMatchObject({
       body: "Hello there",
       from: ada.id,
       name: "Ada Lovelace",
     })
+    expect(message.id).toEqual(expect.any(String))
+    expect(message.sentAt).toBeGreaterThanOrEqual(sentAt)
+    expect(message.sentAt).toBeLessThanOrEqual(Date.now())
     ada.close()
     grace.close()
   })
 
-  it("does not send a message back to the sender", async () => {
+  it("delivers the same stored message to the sender", async () => {
     const running = await startServer()
     const ada = await connect(running.port)
     const grace = await connect(running.port)
-    let echoed = false
-    ada.on("message", () => {
-      echoed = true
-    })
+    const toAda = nextMessage(ada)
+    const toGrace = nextMessage(grace)
 
-    ada.emit("message", { body: "Hello", name: "Ada" })
-    await nextMessage(grace)
+    ada.emit("name", "Ada")
+    ada.emit("message", { body: "Hello" })
 
-    expect(echoed).toBe(false)
+    const [adaMessage, graceMessage] = await Promise.all([toAda, toGrace])
+    expect(adaMessage).toEqual(graceMessage)
     ada.close()
     grace.close()
   })
@@ -91,10 +104,8 @@ describe("chat server", () => {
     const grace = await connect(running.port)
     const received = nextMessage(grace)
 
-    ada.emit("message", {
-      body: "Hi",
-      name: "Ada\u0000 Lovelace invented code",
-    })
+    ada.emit("name", "Ada\u0000 Lovelace invented code")
+    ada.emit("message", { body: "Hi" })
 
     await expect(received).resolves.toMatchObject({
       name: "Ada Lovelace invented co",
@@ -103,7 +114,22 @@ describe("chat server", () => {
     grace.close()
   })
 
-  it("ignores a message whose body is not text", async () => {
+  it("trims and caps the body at 500 characters", async () => {
+    const running = await startServer()
+    const ada = await connect(running.port)
+    const grace = await connect(running.port)
+    const received = nextMessage(grace)
+
+    ada.emit("message", { body: `  ${"a".repeat(600)}  ` })
+
+    const message = await received
+    expect(message.body).toBe("a".repeat(500))
+    expect(message.name).toBeUndefined()
+    ada.close()
+    grace.close()
+  })
+
+  it("ignores a message whose body is not text, blank, or a raw string", async () => {
     const running = await startServer()
     const ada = await connect(running.port)
     const grace = await connect(running.port)
@@ -112,11 +138,39 @@ describe("chat server", () => {
       delivered = true
     })
 
-    ada.emit("message", { body: 12, name: "Ada" })
+    ada.emit("message", { body: 12 })
+    ada.emit("message", { body: "   " })
+    ada.emit("message", "Hello")
     await new Promise((resolve) => setTimeout(resolve, 150))
 
     expect(delivered).toBe(false)
     ada.close()
     grace.close()
+  })
+
+  it("sends recent messages to a client that asks for history", async () => {
+    const running = await startServer()
+    const ada = await connect(running.port)
+    const grace = await connect(running.port)
+    const posted = waitFor(grace, 51)
+
+    ada.emit("name", "Ada")
+    for (let index = 0; index < 51; index += 1) {
+      ada.emit("message", { body: `m${index}` })
+    }
+    await posted
+
+    const bea = await connect(running.port)
+    const received = nextHistory(bea)
+    bea.emit("history")
+    const messages = await received
+
+    expect(messages).toHaveLength(50)
+    expect(messages[0]).toMatchObject({ body: "m1", name: "Ada", from: ada.id })
+    expect(messages[49]).toMatchObject({ body: "m50", name: "Ada" })
+    expect(messages[0].sentAt).toBeLessThanOrEqual(messages[49].sentAt)
+    ada.close()
+    grace.close()
+    bea.close()
   })
 })
