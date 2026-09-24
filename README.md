@@ -1,34 +1,41 @@
 # React Express Socket.io Chat Application
 
-This project is a real-time chat application built using React, Express, and Socket.io. It demonstrates how to create a simple yet functional chat system with a React frontend and an Express backend, utilizing Socket.io for real-time communication.
+This project is a real-time chat application built with React, Express, and Socket.io. A TypeScript React frontend talks to a TypeScript Express server, and Socket.io broadcasts each message to everyone else who is connected.
 
 ## Features
 
-- Real-time messaging
-- Simple and intuitive user interface
-- Server-side message broadcasting
+- Real-time messaging between browser tabs
+- A display name for each tab, saved for that tab's session
+- A stable color next to each person's name
+- Connection status in the header
+- Server-side message broadcasting, with names trimmed and limited to 24 characters
 
 ## Project Structure
 
-The project is divided into two main parts:
+The repository is a pnpm workspace with two packages:
 
-1. Backend (Server)
-2. Frontend (React Application)
+1. Backend (server) at the repository root
+2. Frontend (React application) in `frontend`
 
 ### Backend
 
-The backend is built with Express and Socket.io. It's responsible for handling real-time communication between clients.
+The backend is built with Express and Socket.io. It accepts a display name and a message, then broadcasts that message to every other connected client.
 
 Key files:
-- `server/index.ts`: Contains the Express server setup and Socket.io logic.
+
+- `server/index.ts`: Starts the server on port 4000.
+- `server/chat.ts`: Express and Socket.io setup, including names, broadcasting, and logs.
+- `server/chat.test.ts`: Server tests.
 
 ### Frontend
 
-The frontend is a React application created with Vite. It provides the user interface for the chat application.
+The frontend is a React application created with Vite and styled with Tailwind CSS. It provides the chat interface and the Socket.io client.
 
 Key files:
-- `frontend/src/App.tsx`: The main React component that handles the chat interface and Socket.io client-side logic.
-- `frontend/vite.config.js`: Configuration file for Vite.
+
+- `frontend/src/App.tsx`: The chat interface, name field, and Socket.io client.
+- `frontend/src/App.test.tsx`: Frontend tests.
+- `frontend/vite.config.ts`: Vite, Tailwind, and Vitest configuration.
 
 ## Getting Started
 
@@ -45,7 +52,7 @@ Key files:
    cd react-express-socketio
    ```
 
-2. Install dependencies:
+2. Install dependencies for the server and the frontend:
    ```
    pnpm install
    ```
@@ -62,22 +69,40 @@ Key files:
    pnpm --filter frontend dev
    ```
 
-3. Open your browser and navigate to `http://localhost:5173` to use the chat application.
+3. Open `http://localhost:5173` in your browser.
+
+The frontend also accepts `http://127.0.0.1:5173`.
 
 ## Usage
 
-1. Open the application in multiple browser windows or tabs.
-2. Type a message in the input field and click "Send" or press Enter.
-3. The message will appear in all open instances of the application.
+1. Enter a name and click **Save**. The name is shown as text, and **Edit** brings the field back. Each browser tab keeps its own name.
+2. Open the application in another tab or window and save a different name there.
+3. Type a message and click **Send** or press Enter.
+4. Your message appears on the right. Messages from other people appear on the left, each with that person's color.
+
+The header shows **Connected** while the Socket.io connection is open.
 
 ## Development
 
-- The backend server uses Node.js `--watch` flag for auto-reloading during development.
-- The frontend uses Vite's hot module replacement for a smooth development experience.
+- The backend uses Node.js `--watch` to reload `server/index.ts` while you work.
+- The frontend uses Vite's hot module replacement.
+- Prettier formats files on save in this workspace. The Prettier extension is recommended in `.vscode/extensions.json`.
+- `pnpm typecheck` checks the server and the frontend.
+- `pnpm --filter frontend lint` runs ESLint on the frontend.
+
+### Tests
+
+Run the server and frontend tests:
+
+```
+pnpm test
+```
+
+Server tests use Vitest and a real Socket.io server. Frontend tests use Vitest, Testing Library, and jsdom.
 
 ## Building for Production
 
-1. Build the frontend:
+1. Typecheck and build the frontend:
    ```
    pnpm build
    ```
@@ -86,6 +111,8 @@ Key files:
    ```
    pnpm start
    ```
+
+The production server still listens on port 4000 and expects the frontend to be served separately.
 
 ## License
 
@@ -97,3 +124,5 @@ This project is licensed under the ISC License.
 - [Express](https://expressjs.com/)
 - [Socket.io](https://socket.io/)
 - [Vite](https://vitejs.dev/)
+- [Tailwind CSS](https://tailwindcss.com/)
+- [TypeScript](https://www.typescriptlang.org/)
