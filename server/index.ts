@@ -47,18 +47,12 @@ const io = new Server<
   },
 })
 
-const log = (
-  event: string,
-  details: Record<string, string | number | undefined> = {},
-) => {
+const log = (event: string, detail = "") => {
   const time = new Date().toLocaleTimeString("en-GB", { hour12: false })
-  const extra = Object.entries(details)
-    .filter(([, value]) => value !== undefined && value !== "")
-    .map(([key, value]) => `${key}=${value}`)
-    .join("  ")
-
-  console.log(`${time}  ${event.padEnd(12)}${extra}`)
+  console.log(detail ? `${time}  ${event.padEnd(11)} ${detail}` : `${time}  ${event}`)
 }
+
+const who = (socket: ChatSocket) => socket.data.name || socket.id.slice(-4)
 
 const preview = (body: string) => {
   const text = body.replace(/\s+/g, " ").trim()
@@ -82,23 +76,19 @@ const clientCount = (excluding?: string) => {
 }
 
 io.engine.on("connection_error", (error: { code: number; message: string }) => {
-  log("error", { code: error.code, message: error.message })
+  log("error", error.message)
 })
 
 io.on("connection", (socket: ChatSocket) => {
   socket.data.name = ""
 
-  log("connect", {
-    id: socket.id,
-    clients: clientCount(),
-    recovered: socket.recovered ? "yes" : undefined,
-  })
+  log(
+    "connect",
+    `${who(socket)} · ${clientCount()} online${socket.recovered ? " · recovered" : ""}`,
+  )
 
   socket.on("name", (value) => {
-    const name = cleanName(value)
-    if (name === socket.data.name) return
-    socket.data.name = name
-    log("name", { id: socket.id, name: name || "(cleared)" })
+    socket.data.name = cleanName(value)
   })
 
   socket.on("message", (payload) => {
@@ -116,28 +106,22 @@ io.on("connection", (socket: ChatSocket) => {
       name: name || undefined,
     })
 
-    log("message", {
-      id: socket.id,
-      name: name || undefined,
-      text: preview(body),
-      chars: body.length,
-      recipients: Math.max(clientCount() - 1, 0),
-    })
+    log("message", `${who(socket)} · ${preview(body)}`)
   })
 
   socket.on("disconnect", (reason) => {
-    log("disconnect", {
-      id: socket.id,
-      reason,
-      clients: clientCount(socket.id),
-    })
+    const unusual =
+      reason === "client namespace disconnect" || reason === "transport close"
+        ? ""
+        : ` · ${reason}`
+    log("disconnect", `${who(socket)} · ${clientCount(socket.id)} online${unusual}`)
   })
 })
 
 server.on("error", (error: NodeJS.ErrnoException) => {
-  log("error", { message: error.message })
+  log("error", error.message)
 })
 
 server.listen(PORT, () => {
-  log("listening", { url: `http://localhost:${PORT}` })
+  log("listening", `http://localhost:${PORT}`)
 })
