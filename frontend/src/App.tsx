@@ -1,7 +1,40 @@
-import { useEffect, useId, useRef, useState } from "react"
-import io from "socket.io-client"
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react"
+import { io, type Socket } from "socket.io-client"
 
-const socket = io("http://localhost:4000")
+type IncomingMessage = {
+  body: string
+  from: string
+  name?: string
+}
+
+type ClientToServerEvents = {
+  message: (payload: { body: string; name: string }) => void
+  name: (value: string) => void
+}
+
+type ServerToClientEvents = {
+  message: (message: IncomingMessage) => void
+}
+
+type ChatMessage = {
+  id: string
+  body: string
+  from: string
+  name: string
+  mine: boolean
+  at: Date
+}
+
+const socket: Socket<ServerToClientEvents, ClientToServerEvents> = io(
+  "http://localhost:4000",
+)
 const NAME_LIMIT = 24
 const NAME_STORAGE_KEY = "chat-name"
 const USER_COLORS = [
@@ -17,7 +50,8 @@ const USER_COLORS = [
   "#475569",
 ]
 
-const cleanName = (value) => value.replace(/\s+/g, " ").trim().slice(0, NAME_LIMIT)
+const cleanName = (value: string) =>
+  value.replace(/\s+/g, " ").trim().slice(0, NAME_LIMIT)
 
 const readStoredName = () => {
   try {
@@ -27,7 +61,7 @@ const readStoredName = () => {
   }
 }
 
-const colorFor = (id) => {
+const colorFor = (id: string) => {
   if (!id) return USER_COLORS[USER_COLORS.length - 1]
   let hash = 0
   for (let index = 0; index < id.length; index += 1) {
@@ -36,13 +70,13 @@ const colorFor = (id) => {
   return USER_COLORS[hash % USER_COLORS.length]
 }
 
-const formatTime = (date) =>
+const formatTime = (date: Date) =>
   new Intl.DateTimeFormat(undefined, {
     hour: "numeric",
     minute: "2-digit",
   }).format(date)
 
-const shortId = (id) => id.slice(-4)
+const shortId = (id: string) => id.slice(-4)
 
 const App = () => {
   const storedName = readStoredName()
@@ -50,10 +84,10 @@ const App = () => {
   const [draftName, setDraftName] = useState(storedName)
   const [editingName, setEditingName] = useState(!storedName)
   const [message, setMessage] = useState("")
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [connected, setConnected] = useState(socket.connected)
   const [userId, setUserId] = useState(socket.id ?? "")
-  const listRef = useRef(null)
+  const listRef = useRef<HTMLDivElement>(null)
   const nameId = useId()
   const inputId = useId()
   const trimmed = message.trim()
@@ -62,10 +96,10 @@ const App = () => {
   useEffect(() => {
     const onConnect = () => {
       setConnected(true)
-      setUserId(socket.id)
+      setUserId(socket.id ?? "")
     }
     const onDisconnect = () => setConnected(false)
-    const onMessage = (incoming) => {
+    const onMessage = (incoming: IncomingMessage) => {
       setMessages((current) => [
         ...current,
         {
@@ -85,7 +119,7 @@ const App = () => {
     queueMicrotask(() => {
       if (!socket.connected) return
       setConnected(true)
-      setUserId(socket.id)
+      setUserId(socket.id ?? "")
     })
 
     return () => {
@@ -99,7 +133,9 @@ const App = () => {
     const sendName = () => socket.emit("name", savedName)
     socket.on("connect", sendName)
     if (socket.connected) sendName()
-    return () => socket.off("connect", sendName)
+    return () => {
+      socket.off("connect", sendName)
+    }
   }, [savedName])
 
   useEffect(() => {
@@ -108,7 +144,7 @@ const App = () => {
     list.scrollTop = list.scrollHeight
   }, [messages])
 
-  const saveName = (event) => {
+  const saveName = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!draftDisplayName) return
 
@@ -124,16 +160,17 @@ const App = () => {
     socket.emit("name", draftDisplayName)
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (!trimmed || !connected) return
+    const senderId = socket.id
+    if (!trimmed || !connected || !senderId) return
 
     setMessages((current) => [
       ...current,
       {
         id: crypto.randomUUID(),
         body: trimmed,
-        from: socket.id,
+        from: senderId,
         name: savedName,
         mine: true,
         at: new Date(),
@@ -165,7 +202,9 @@ const App = () => {
                   maxLength={NAME_LIMIT}
                   placeholder="Shown on your messages"
                   autoComplete="nickname"
-                  onChange={(event) => setDraftName(event.target.value)}
+                  onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                    setDraftName(event.target.value)
+                  }
                 />
               </div>
               <button
@@ -269,7 +308,9 @@ const App = () => {
             autoComplete="off"
             enterKeyHint="send"
             maxLength={500}
-            onChange={(event) => setMessage(event.target.value)}
+            onChange={(event: ChangeEvent<HTMLInputElement>) =>
+              setMessage(event.target.value)
+            }
           />
           <button
             className="min-h-11 cursor-pointer rounded-xl bg-accent px-4 font-semibold text-mine-ink disabled:cursor-not-allowed disabled:opacity-40"

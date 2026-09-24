@@ -20,14 +20,14 @@ The project is divided into two main parts:
 The backend is built with Express and Socket.io. It's responsible for handling real-time communication between clients.
 
 Key files:
-- `server/index.js`: Contains the Express server setup and Socket.io logic.
+- `server/index.ts`: Contains the Express server setup and Socket.io logic.
 
 ### Frontend
 
 The frontend is a React application created with Vite. It provides the user interface for the chat application.
 
 Key files:
-- `frontend/src/App.jsx`: The main React component that handles the chat interface and Socket.io client-side logic.
+- `frontend/src/App.tsx`: The main React component that handles the chat interface and Socket.io client-side logic.
 - `frontend/vite.config.js`: Configuration file for Vite.
 
 ## Getting Started
